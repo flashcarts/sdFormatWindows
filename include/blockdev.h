@@ -5,6 +5,8 @@
 
 #include "types.h"
 
+#include <string>
+#include <windows.h>
 
 
 class BlockDev
@@ -13,6 +15,8 @@ class BlockDev
 	bool m_dirty;
 	int m_fd;
 	u64 m_sectors;
+	HANDLE m_handle = INVALID_HANDLE_VALUE;
+	std::string pDrvPath;
 
 
 	BlockDev(const BlockDev&) noexcept = delete; // Copy
@@ -26,7 +30,7 @@ public:
 	BlockDev(void) noexcept : m_dirty(false), m_fd(-1), m_sectors(0) {}
 	~BlockDev(void) noexcept
 	{
-		if(m_fd != -1) close();
+		if(m_handle != INVALID_HANDLE_VALUE) close();
 	}
 
 	/**
@@ -82,7 +86,8 @@ public:
 	 *
 	 * @return     Returns 0 on success or errno.
 	 */
-	int eraseAll(const bool secure = false) const noexcept;
+	/* FCNET CHANGE - unconstify function to allow overwriting member variables */
+	int eraseAll(const bool secure = false) /* const */ noexcept;
 
 	/**
 	 * @brief      Closes the block device.

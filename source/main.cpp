@@ -20,9 +20,13 @@ static void printHelp(void)
 	     "Options:\n"
 	     "  -l, --label LABEL        Volume label. Maximum 11 uppercase characters.\n"
 	     "                           11 arbitrary unicode code points for exFAT.\n"
+/* FCNET CHANGE START - always erase entire disk, remove 'e' option */
+#if 0
 	     "  -e, --erase TYPE         Erases the whole card before formatting (TRIM).\n"
 	     "                           No effect with USB card readers.\n"
 	     "                           TYPE should be 'trim'.\n"
+#endif
+/* FCNET CHANGE END - always erase entire disk, remove 'e' option */
 	     "  -f, --force-fat32        Force FAT32 for SDXC cards.\n"
 	     "  -d, --force-32kib        Force 32 KiB cluster size for SDXC cards.\n"
 	     "  -c, --capacity SECTORS   Override capacity for fake cards.\n"
@@ -42,7 +46,11 @@ int main(const int argc, char *const argv[])
 	static const struct option long_options[] =
 	{{"big-clusters",       no_argument, NULL, 'b'},
 	 {    "capacity", required_argument, NULL, 'c'},
+/* FCNET CHANGE START - always erase entire disk, remove 'e' option */
+#if 0
 	 {       "erase", required_argument, NULL, 'e'},
+#endif
+/* FCNET CHANGE END - always erase entire disk, remove 'e' option */
 	 { "force-fat32",       no_argument, NULL, 'f'},
 	 { "force-32kib",       no_argument, NULL, 'd'},
 	 {       "label", required_argument, NULL, 'l'},
@@ -55,7 +63,10 @@ int main(const int argc, char *const argv[])
 	char label[4 * 11 + 1]{}; // Worst case 4 bytes per char.
 	while(1)
 	{
-		const int c = getopt_long(argc, argv, "bc:e:dfl:vh", long_options, NULL);
+		/* FCNET CHANGE START - always erase entire disk, remove 'e' option */
+		//const int c = getopt_long(argc, argv, "bc:e:dfl:vh", long_options, NULL);
+		const int c = getopt_long(argc, argv, "bc:dfl:vh", long_options, NULL);
+		/* FCNET CHANGE END - always erase entire disk, remove 'e' option */
 		if(c == -1) break;
 
 		switch(c)
@@ -74,6 +85,8 @@ int main(const int argc, char *const argv[])
 					}
 				}
 				break;
+/* FCNET CHANGE START - always erase entire disk, remove 'e' option */
+#if 0
 			case 'e':
 				{
 					// TODO: Support full overwrite?
@@ -88,6 +101,8 @@ int main(const int argc, char *const argv[])
 					}
 				}
 				break;
+#endif
+/* FCNET CHANGE END - always erase entire disk, remove 'e' option */
 			case 'f':
 				flags.forceFat32 = 1;
 				break;

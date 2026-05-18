@@ -3,12 +3,27 @@
 
 #include <cstdio>
 #include <cstring>
-#include <sys/random.h> // getrandom()...
+/* FCNET CHANGE START - switch to rand as sys/random.h unavailable on mingw-w64 */
+//#include <sys/random.h> // getrandom()...
+#include <cstdlib>
+#include <ctime>
+/* FCNET CHANGE END - switch to rand as sys/random.h unavailable on mingw-w64 */
 #include "types.h"
 #include "mbr.h"
 #include "format.h"
 #include "verbose_printf.h"
 
+/* FCNET CHANGE START - wrapper for random generator for MBR disk signature */
+bool generateMbrDiskSignature(Mbr *mbr)
+{
+	srand(time(NULL));
+	if (mbr == NULL)
+		return false;
+	// this should return something within 4 bytes?
+	mbr->diskSig = rand();
+	return true;
+}
+/* FCNET CHANGE END - wrapper for random generator for MBR disk signature */
 
 
 // Converts LBA to MBR CHS format.
@@ -37,7 +52,11 @@ int createMbrAndPartition(const FormatParams &params, BufferedFsWriter &dev)
 	// Generate a new, random disk signature.
 	// TODO: If getrandom() returns -1 abort. We should probably make a wrapper.
 	Mbr mbr{};
-	while(getrandom(&mbr.diskSig, 4, 0) != 4);
+
+	/* FCNET CHANGE START - switch to rand as sys/random.h unavailable on mingw-w64 */
+	// while(getrandom(&mbr.diskSig, 4, 0) != 4);
+	generateMbrDiskSignature(&mbr);
+	/* FCNET CHANGE END - wrapper for random generator for MBR disk signature */
 	verbosePrintf("Disk ID: 0x%08" PRIX32 "\n", mbr.diskSig);
 
 	// Set partition to inactive.

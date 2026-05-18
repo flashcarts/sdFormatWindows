@@ -18,7 +18,10 @@ CXXFLAGS := $(ARCH) -std=c++20 -O2 -g -fPIE -fstrict-aliasing \
 			-Wall -Wextra -Wstrict-aliasing=2
 ASFLAGS  := $(ARCH) -O2 -g -fPIE -x assembler-with-cpp
 ARFLAGS  := -rcs
-LDFLAGS  := $(ARCH) -O2 -s -pie -fPIE -Wl,--gc-sections,-z,relro,-z,now,-z,noexecstack
+# FCNET CHANGE START - HACK to support mingw-w64
+#LDFLAGS  := $(ARCH) -O2 -s -pie -fPIE -Wl,--gc-sections,-z,relro,-z,now,-z,noexecstack
+LDFLAGS  := $(ARCH) -O2 -Wl,--gc-sections -static
+# FCNET CHANGE END - HACK to support mingw-w64
 
 PREFIX   :=
 ifneq ($(strip $(USE_CLANG)),)

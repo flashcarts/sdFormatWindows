@@ -246,6 +246,8 @@ u32 formatSd(const char *const path, const std::string &label, const ArgFlags fl
 {
 	BufferedFsWriter dev;
 	if(dev.open(path) != 0) return ERR_DEV_OPEN;
+
+	/* FCNET NOTE - below won't work in Windows, it is commented out in privileges.cpp. Just run app as administrator. */
 	dropPrivileges();
 
 	u64 totSec = dev.getSectors();
@@ -283,7 +285,10 @@ u32 formatSd(const char *const path, const std::string &label, const ArgFlags fl
 		}
 	}
 
-	if(flags.erase || flags.secErase)
+	/* FCNET CHANGE START - always erase entire disk */
+	/* Instead of using TRIM, we use Win32 API to erase partition table */
+	//if(flags.erase || flags.secErase)
+	/* FCNET CHANGE END - always erase entire disk */
 	{
 		verbosePuts("Erasing SD card...");
 

@@ -9,6 +9,8 @@
 
 void dropPrivileges(void)
 {
+	/* FCNET CHANGE START - stub function that does not work in Windows. Run program as administrator. */
+#if 0
 	const int uid = getuid();
 	if(uid == -1) abort();
 	else if(uid != 0) // Drop privilges when running as set-user-ID program.
@@ -20,4 +22,6 @@ void dropPrivileges(void)
 		// Extra paranoid check.
 		if(setuid(0) == 0) abort();
 	}
+#endif
+	/* FCNET CHANGE END - stub function that does not work in Windows. Run program as administrator. */
 }

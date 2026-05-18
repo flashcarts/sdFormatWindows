@@ -6,107 +6,83 @@
 #include <cstring>
 #include <errno.h>
 #include <fcntl.h>     // open()...
-#include <linux/fs.h>  // BLKGETSIZE64...
-#include <sys/ioctl.h> // ioctl()...
 #include <sys/stat.h>  // S_IRUSR, S_IWUSR...
-#include <unistd.h>    // write(), close()...
 #include "types.h"
 #include "blockdev.h"
 
+#include <string>
+#include <windows.h>
+#include <winioctl.h>
 
 //#define REDIRECT_FOR_DEBUG (1)
 
 
-
-static int checkDevice(const char *const path)
-{
-	int res = EINVAL; // By default assume the given path is not a suitable device.
-	char cmd[64] = "/usr/bin/lsblk -dnr -oTYPE,HOTPLUG,PHY-SEC ";
-	strncpy(&cmd[43], path, sizeof(cmd) - 43);
-	cmd[sizeof(cmd) - 1] = '\0';
-	FILE *const p = ::popen(cmd, "r");
-	if(p == nullptr)
-	{
-		res = errno;
-		perror("Failed to call lsblk");
-		return res;
-	}
-
-	char line[16];
-	line[sizeof(line) - 1] = '\0';
-	if(fgets(line, sizeof(line), p) == nullptr)
-	{
-		::pclose(p);
-		return res;
-	}
-
-	if(strcmp(line, "disk 1 512\n") == 0 || strcmp(line, "loop 0 512\n") == 0)
-		res = 0;
-
-	const int pres = ::pclose(p);
-	if(pres == -1)     res = errno;  // pclose() error.
-	else if(pres != 0) res = EINVAL; // lsblk error.
-
-	return res;
-}
-
-int BlockDev::open(const char *const path, const bool rw) noexcept
+// TODO: implement rw
+int BlockDev::open(const char *const path, const bool /* rw */) noexcept
 {
 	int res = 0;
-	int fd = -1;
+
+	// Construct full path from a given drive letter path
+	std::string fullPath = path;
+	fullPath =  "\\\\.\\" + fullPath;
+
+	// Get the physical drive number that this drive letter resides in
+	HANDLE handle = CreateFile(fullPath.c_str(), GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE, nullptr, OPEN_EXISTING, FILE_FLAG_NO_BUFFERING, nullptr);
+	STORAGE_DEVICE_NUMBER number;
+	DWORD bytesReturned = 0;
+	DeviceIoControl(handle, IOCTL_STORAGE_GET_DEVICE_NUMBER, nullptr, 0, &number, sizeof(number), &bytesReturned, nullptr);
+	DWORD physicalDriveNumber = number.DeviceNumber;
+	// ...and construct full path to it
+	pDrvPath = "\\\\.\\PhysicalDrive" + std::to_string(physicalDriveNumber);
+
+	// Close the handle for volume. We will reopen with the physical drive.
+	// Wait for it to complete.
+	while(CloseHandle(handle) == 0);
+
 	do
 	{
-		res = checkDevice(path);
-		errno = res; // For perror() at the end.
-		if(res == EINVAL)
-		{
-			fputs("Error: Not a suitable block device.\n", stderr);
-			break;
-		}
-		else if(res != 0)
-			break;
+		// Switch handle to the physical drive where we will perform operations
+		handle = CreateFile(pDrvPath.c_str(), GENERIC_READ | GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE, nullptr, OPEN_EXISTING, FILE_FLAG_NO_BUFFERING, nullptr);
 
-		// Note: There is no reliable way of locking block device files so we don't and hope nothing explodes.
-		//       flock() only works between processes using it.
-		// Under Linux opening a mounted block device with O_EXCL will fail with EBUSY.
-		fd = ::open(path, (rw ? O_RDWR : O_RDONLY) | O_EXCL);
-		if(fd == -1)
-		{
-			res = errno;
-			if(res == EBUSY)
-			{
-				fputs("Error: Device is mounted.\n", stderr);
-			}
-			break;
-		}
-
+		// Get disk size
+		DISK_GEOMETRY_EX diskGeometryEx;
 		u64 diskSize;
-		if(ioctl(fd, BLKGETSIZE64, &diskSize) == -1)
+		if(!DeviceIoControl(handle, IOCTL_DISK_GET_DRIVE_GEOMETRY_EX, nullptr, 0, &diskGeometryEx, sizeof(diskGeometryEx), nullptr, nullptr))
 		{
-			res = errno;
+			printf("Error retrieving disk size\n");
+			res = GetLastError();
+			break;
+		}
+		diskSize = (u64)diskGeometryEx.DiskSize.QuadPart;
+
+		// Lock volume. Will return error 5 == access denied without it.
+		if (!DeviceIoControl (handle, FSCTL_LOCK_VOLUME, NULL, 0, NULL, 0, &bytesReturned, NULL))
+		{
+			printf("Error locking volume\n");
+			res = GetLastError();
 			break;
 		}
 
-#ifdef REDIRECT_FOR_DEBUG
-		while(::close(fd) == -1 && errno == EINTR);
-
-		// Create file with -rw-rw-rw- permissions.
-		fd = ::open("./sdFormatLinux_dump.bin", O_RDWR | O_CREAT, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH);
-		if(fd == -1)
+		// Dismount volume. Will return error 5 == access denied without it.
+		if (!DeviceIoControl (handle, FSCTL_DISMOUNT_VOLUME, NULL, 0, NULL, 0, &bytesReturned, NULL))
 		{
-			res = errno;
+			printf("Error dismounting volume\n");
+			res = GetLastError();
 			break;
 		}
-#endif
 
-		m_fd = fd;
+		m_handle = handle;
 		m_sectors = diskSize / m_sectorSize;
 	} while(0);
 
 	if(res != 0)
 	{
-		perror("Failed to open block device");
-		if(fd != -1) ::close(fd);
+		printf("Failed to open block device, GetLastError(): %d\n", res);
+		if(handle != INVALID_HANDLE_VALUE) {
+			CloseHandle(handle);
+			handle = INVALID_HANDLE_VALUE;
+			m_handle = INVALID_HANDLE_VALUE;
+		}
 	}
 	return res;
 }
@@ -114,18 +90,18 @@ int BlockDev::open(const char *const path, const bool rw) noexcept
 int BlockDev::read(void *buf, const u64 sector, const u64 count) const noexcept
 {
 	int res = 0;
-	const int fd = m_fd;
-	off_t offset = sector * m_sectorSize;
+	DWORD offset = sector * m_sectorSize;
 	u64 totSize = count * m_sectorSize;
 	u8 *_buf = reinterpret_cast<u8*>(buf);
 	while(totSize > 0)
 	{
+		DWORD _read = 0;
 		// Limit of 1 GiB chunks.
 		const size_t blkSize = (totSize > 0x40000000 ? 0x40000000 : totSize);
-		const ssize_t _read = ::pread(fd, _buf, blkSize, offset);
-		if(_read == -1)
+		SetFilePointer(m_handle, offset, nullptr, FILE_BEGIN);
+		if(!ReadFile(m_handle, _buf, blkSize, &_read, nullptr))
 		{
-			res = errno;
+			res = GetLastError();
 			break;
 		}
 
@@ -134,33 +110,29 @@ int BlockDev::read(void *buf, const u64 sector, const u64 count) const noexcept
 		totSize -= _read;
 	}
 
-	if(res != 0) perror("Failed to read from block device");
+	if(res == 0)
+		printf("Failed to read from block device, GetLastError() == %d\n", res);
 	return res;
 }
 
 int BlockDev::write(const void *buf, const u64 sector, const u64 count) noexcept
 {
-#ifdef REDIRECT_FOR_DEBUG
-	// Limit to 1 GiB in case we screw up in debug mode.
-	if(sector > ~count || sector + count > 0x40000000) return EINVAL;
-#endif
-
 	// Mark as dirty since we are about to write data.
 	m_dirty = true;
 
 	int res = 0;
-	const int fd = m_fd;
-	off_t offset = sector * m_sectorSize;
+	DWORD offset = sector * m_sectorSize;
 	u64 totSize = count * m_sectorSize;
 	const u8 *_buf = reinterpret_cast<const u8*>(buf);
 	while(totSize > 0)
 	{
+		DWORD written = 0;
 		// Limit of 1 GiB chunks.
 		const size_t blkSize = (totSize > 0x40000000 ? 0x40000000 : totSize);
-		const ssize_t written = ::pwrite(fd, _buf, blkSize, offset);
-		if(written == -1)
+		SetFilePointer(m_handle, offset, nullptr, FILE_BEGIN);
+		if(!WriteFile(m_handle, _buf, blkSize, &written, nullptr))
 		{
-			res = errno;
+			res = GetLastError();
 			break;
 		}
 
@@ -169,40 +141,60 @@ int BlockDev::write(const void *buf, const u64 sector, const u64 count) noexcept
 		totSize -= written;
 	}
 
-	if(res != 0) perror("Failed to write to block device");
+	if(res != 0)
+		printf("Failed to write to block device, GetLastError() == %d\n", res);
 	return res;
 }
 
-int BlockDev::eraseAll(const bool secure) const noexcept
+/* FCNET CHANGE START - use eraseAll to clear drive partitions */
+// We ignore the secure erase option.
+// Hijack this function, which will use Win32 API to "clean" the drive of partition tables.
+// On Windows this must be done before we can write arbitrary MBR.
+// We also have to close and reopen the handle during this process, so we unconstify this function.
+int BlockDev::eraseAll(const bool /* secure */) /* const */ noexcept
 {
 	int res = 0;
-	const u64 wholeRange[2] = {0, m_sectors * m_sectorSize};
-	if(ioctl(m_fd, (secure ? BLKSECDISCARD : BLKDISCARD), wholeRange) == -1)
+	DWORD bytesReturned = 0;
+	CREATE_DISK diskStruct = {};
+	diskStruct.PartitionStyle = PARTITION_STYLE_RAW;
+
+	if(!DeviceIoControl(m_handle, IOCTL_DISK_CREATE_DISK, &diskStruct, sizeof(CREATE_DISK), NULL, 0, &bytesReturned, NULL))
 	{
-		res = errno;
-		perror("Failed to discard all data on device");
+		res = GetLastError();
+		printf("Failed to discard all data on device, GetLastError() = %d\n", res);
+		return res;
 	}
+
+	// we must reopen drive for Windows to detect that the partition table is gone
+	// Unlock volume.
+	if (!DeviceIoControl(m_handle, FSCTL_UNLOCK_VOLUME, NULL, 0, NULL, 0, &bytesReturned, NULL)) {
+		res = GetLastError();
+		printf("Error unlocking volume, GetLastError() == %d\n", res);
+		return res;
+	}
+
+	while(CloseHandle(m_handle) == 0);
+
+	// reopen the handle. Now Windows should let us do anything
+	m_handle = CreateFile(pDrvPath.c_str(), GENERIC_READ | GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE, nullptr, OPEN_EXISTING, FILE_FLAG_NO_BUFFERING, nullptr);
 
 	return res;
 }
+/* FCNET CHANGE END - use eraseAll to clear drive partitions */
 
 // TODO: Should we return any error that is not EINTR?
 void BlockDev::close(void) noexcept
 {
-	const int fd = m_fd;
 	if(m_dirty)
 	{
 		// Flush all writes to the device.
-		fsync(fd);
-
-		// Force partition rescanning so the kernel can see the changes.
-		ioctl(fd, BLKRRPART);
+		FlushFileBuffers(m_handle);
 	}
 
 	// Close the file descriptor.
-	while(::close(fd) == -1 && errno == EINTR);
+	while(CloseHandle(m_handle) == 0);
+	m_handle = INVALID_HANDLE_VALUE;
 
 	m_dirty = false;
-	m_fd = -1;
 	m_sectors = 0;
 }
