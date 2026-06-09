@@ -1,1 +1,24 @@
+#include <windows.h>
+#include <commctrl.h>
+#include "resource.h"
+
 1 24 "manifest.xml"
+
+DIALOG_MAIN DIALOGEX 0, 0, 202, 85
+CAPTION "sdFormatWindows"
+STYLE DS_SETFONT | DS_MODALFRAME | DS_CENTER | WS_POPUP | WS_CAPTION | WS_SYSMENU
+FONT 10, "Segoe UI", 400, 0, 1
+{
+    CONTROL
+        "<a href=""https://www.flashcarts.net/sdformatwindows.html"">https://www.flashcarts.net/sdformatwindows.html</a>",
+        IDC_STATIC_LINK,
+        "SysLink",
+        WS_CHILD | WS_VISIBLE | WS_TABSTOP,
+        10, 5, 190, 12
+
+    LTEXT "Select drive", IDC_STATIC_DRIVESELECT, 10, 22, 39, 12
+    COMBOBOX IDC_DRIVELIST, 50, 20, 23, 12, CBS_DROPDOWNLIST | WS_VSCROLL
+    CHECKBOX "Force FAT32", IDC_CHECKBOX_FORCEFAT32, 10, 35, 60, 12, BS_AUTOCHECKBOX
+    CHECKBOX "Force 32KiB cluster size", IDC_CHECKBOX_FORCE32KIB, 10, 50, 100, 12, BS_AUTOCHECKBOX
+    PUSHBUTTON "Format", IDC_BUTTON_START, 10, 65, 50, 14
+}

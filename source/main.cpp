@@ -10,6 +10,7 @@
 #include "errors.h"
 #include "format.h"
 #include "verbose_printf.h"
+#include "gui.h"
 
 
 
@@ -39,7 +40,7 @@ static void printHelp(void)
 	     "  -h, --help               Output this help.\n");
 }
 
-int main(const int argc, char *const argv[])
+int main(int argc, char * argv[])
 {
 	setlocale(LC_CTYPE, ""); // We could also default to "en_US.UTF-8".
 
@@ -127,6 +128,11 @@ int main(const int argc, char *const argv[])
 				printHelp();
 				return ERR_INVALID_ARG;
 		}
+	}
+
+	// no argc
+	if (argc == 1) {
+		return guiMain();
 	}
 
 	if(argc - optind < 1 || argc - optind > 1)

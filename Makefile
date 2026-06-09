@@ -6,6 +6,7 @@ BUILD    := build
 INCLUDES := include
 SOURCES  := source
 # FCNET CHANGE START - add manifest for Win32
+INCLUDES += win32
 SOURCES  += win32
 # FCNET CHANGE END - add manifest for Win32
 DEFINES  := -D_FORTIFY_SOURCE=2
