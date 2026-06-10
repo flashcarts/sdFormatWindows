@@ -5,6 +5,9 @@ TARGET   := $(notdir $(CURDIR))
 BUILD    := build
 INCLUDES := include
 SOURCES  := source
+# FCNET CHANGE START - add manifest for Win32
+SOURCES  += win32
+# FCNET CHANGE END - add manifest for Win32
 DEFINES  := -D_FORTIFY_SOURCE=2
 
 
@@ -47,6 +50,9 @@ export VPATH  := $(foreach dir,$(DATA),$(CURDIR)/$(dir)) \
 CPPFILES := $(foreach dir,$(SOURCES),$(notdir $(wildcard $(dir)/*.cpp)))
 CFILES   := $(foreach dir,$(SOURCES),$(notdir $(wildcard $(dir)/*.c)))
 SFILES   := $(foreach dir,$(SOURCES),$(notdir $(wildcard $(dir)/*.s)))
+# FCNET CHANGE START - add manifest for Win32
+RCFILES  := $(foreach dir,$(SOURCES),$(notdir $(wildcard $(dir)/*.rc)))
+# FCNET CHANGE END - add manifest for Win32
 
 ifeq ($(strip $(CPPFILES)),)
 	export LD := $(CC)
@@ -54,7 +60,9 @@ else
 	export LD := $(CXX)
 endif
 
-export OFILES  := $(CPPFILES:.cpp=.o) $(CFILES:.c=.o) $(SFILES:.s=.o)
+# FCNET CHANGE START - add manifest for Win32
+export OFILES  := $(CPPFILES:.cpp=.o) $(CFILES:.c=.o) $(SFILES:.s=.o) $(RCFILES:.rc=.o)
+# FCNET CHANGE END - add manifest for Win32
 
 export INCLUDE := $(foreach dir,$(INCLUDES),-I$(CURDIR)/$(dir)) -I$(CURDIR)/$(BUILD)
 
@@ -109,5 +117,11 @@ $(OUTPUT): $(OFILES)
 %.a:
 	@echo $(notdir $@)
 	$(AR) $(ARFLAGS) $@ $^
+
+# FCNET CHANGE START - add manifest for Win32
+%.o: %.rc
+	@echo $(notdir $<)
+	windres $< $@
+# FCNET CHANGE END - add manifest for Win32
 
 endif
