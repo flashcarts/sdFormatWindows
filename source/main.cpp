@@ -24,6 +24,7 @@ static void printHelp(void)
 	     "                           No effect with USB card readers.\n"
 	     "                           TYPE should be 'trim'.\n"
 	     "  -f, --force-fat32        Force FAT32 for SDXC cards.\n"
+	     "  -d, --force-32kib        Force 32 KiB cluster size for SDXC cards.\n"
 	     "  -c, --capacity SECTORS   Override capacity for fake cards.\n"
 	     "  -b, --big-clusters       NOT RECOMMENDED. In combination with -f on SDXC cards\n"
 	     "                           this will set the logical sector size higher than 512\n"
@@ -43,6 +44,7 @@ int main(const int argc, char *const argv[])
 	 {    "capacity", required_argument, NULL, 'c'},
 	 {       "erase", required_argument, NULL, 'e'},
 	 { "force-fat32",       no_argument, NULL, 'f'},
+	 { "force-32kib",       no_argument, NULL, 'd'},
 	 {       "label", required_argument, NULL, 'l'},
 	 {     "verbose",       no_argument, NULL, 'v'},
 	 {        "help",       no_argument, NULL, 'h'},
@@ -53,7 +55,7 @@ int main(const int argc, char *const argv[])
 	char label[4 * 11 + 1]{}; // Worst case 4 bytes per char.
 	while(1)
 	{
-		const int c = getopt_long(argc, argv, "bc:e:fl:vh", long_options, NULL);
+		const int c = getopt_long(argc, argv, "bc:e:dfl:vh", long_options, NULL);
 		if(c == -1) break;
 
 		switch(c)
@@ -88,6 +90,9 @@ int main(const int argc, char *const argv[])
 				break;
 			case 'f':
 				flags.forceFat32 = 1;
+				break;
+			case 'd':
+				flags.force32KiB = 1;
 				break;
 			case 'l':
 				{

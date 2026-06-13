@@ -96,6 +96,11 @@ static bool getFormatParams(const u64 totSec, const ArgFlags flags, FormatParams
 			else                   bytesPerSec = 4096; // <=2   TiB.
 			secPerClus = 128;
 		}
+		else if(flags.force32KiB && secPerClus > 64)
+		{
+			secPerClus = 64;
+			fputs("Warning: Overriding cluster size to 32KiB. This can reduce performance.\n", stderr);
+		}
 		else if(secPerClus > 128)
 		{
 			secPerClus = 128;

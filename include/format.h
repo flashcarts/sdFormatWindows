@@ -23,6 +23,7 @@ union ArgFlags
 		u8 forceFat32  : 1;
 		u8 secErase    : 1;
 		u8 verbose     : 1;
+		u8 force32KiB  : 1;
 	};
 	u8 allFlags;
 };
