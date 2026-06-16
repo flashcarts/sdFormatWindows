@@ -16,7 +16,7 @@
 
 static void printHelp(void)
 {
-	puts("sdFormatWindows 0.2.0-win by The Flashcarts Wiki team\n"
+	puts("sdFormatWindows 0.2.0-win1 by The Flashcarts Wiki team\n"
 	     "Usage: sdFormatWindows [OPTIONS...] DEVICE\n\n"
 	     "Options:\n"
 	     "  -l, --label LABEL        Volume label. Maximum 11 uppercase characters.\n"
