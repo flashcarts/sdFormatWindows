@@ -16,8 +16,8 @@
 
 static void printHelp(void)
 {
-	puts("sdFormatLinux 0.2.0 by profi200\n"
-	     "Usage: sdFormatLinux [OPTIONS...] DEVICE\n\n"
+	puts("sdFormatWindows 0.2.0-win by The Flashcarts Wiki team\n"
+	     "Usage: sdFormatWindows [OPTIONS...] DEVICE\n\n"
 	     "Options:\n"
 	     "  -l, --label LABEL        Volume label. Maximum 11 uppercase characters.\n"
 	     "                           11 arbitrary unicode code points for exFAT.\n"
