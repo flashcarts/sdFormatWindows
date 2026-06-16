@@ -1,5 +1,7 @@
 #pragma once
 
+#define IDI_ICON 100
+
 #define IDC_SFWDIALOG 1000
 #define IDC_STATIC_LINK 1001
 #define IDC_STATIC_DRIVESELECT 1002

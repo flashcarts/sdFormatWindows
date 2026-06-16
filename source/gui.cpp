@@ -97,6 +97,11 @@ static INT_PTR CALLBACK DialogProc(HWND hwnd, UINT message, WPARAM wParam, LPARA
             {
                 ComboBox_AddString(comboBox, (LONG_PTR)allActiveDrives.at(i).c_str());
             }
+
+            // Initialize GUI icons
+            SendMessage(hwnd, WM_SETICON, ICON_SMALL, (LPARAM)LoadIcon(GetModuleHandle(NULL), MAKEINTRESOURCE(IDI_ICON)));
+            SendMessage(hwnd, WM_SETICON, ICON_BIG, (LPARAM)LoadIcon(GetModuleHandle(NULL), MAKEINTRESOURCE(IDI_ICON)));
+
             return TRUE;
         }
         case WM_COMMAND: {
