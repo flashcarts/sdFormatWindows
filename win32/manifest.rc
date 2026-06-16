@@ -9,7 +9,7 @@ IDI_ICON ICON "SDICON64.ico"
 DIALOG_MAIN DIALOGEX 0, 0, 202, 85
 CAPTION "sdFormatWindows"
 STYLE DS_SETFONT | DS_MODALFRAME | DS_CENTER | WS_POPUP | WS_CAPTION | WS_SYSMENU
-FONT 10, "Segoe UI", 400, 0, 1
+FONT 9, "Segoe UI", 400, 0, 1
 {
     CONTROL
         "<a href=""https://www.flashcarts.net/sdformatwindows.html"">https://www.flashcarts.net/sdformatwindows.html</a>",
