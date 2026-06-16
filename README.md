@@ -1,3 +1,15 @@
+# sdFormatWindows
+
+Open-source, mostly compliant SD card formatter for Windows, with a graphical user interface. Fork of [sdFormatLinux](https://github.com/profi200/sdFormatLinux).
+
+## Changes from sdFormatLinux
+* Ported to Windows.
+* User-friendly GUI implementation is added.
+* `erase` (TRIM) is not supported, and the option is removed. The function instead calls the Windows API to erase all partition tables.
+* An option to always use 32 KiB has been added (not enabled by default) for compatibility with ultra-legacy applications.
+
+The original README can be found below.
+
 # sdFormatLinux
 Unfortunately SDFormatter [was](https://www.sdcard.org/downloads/sd-memory-card-formatter-for-linux) not available for Linux so i made this. It is a tool to format your SD card the way the SD Association intended but under Linux. It offers a few features the official tool does not like FAT32 for SDXC cards.
 
