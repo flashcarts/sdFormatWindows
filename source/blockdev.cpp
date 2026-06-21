@@ -156,7 +156,7 @@ int BlockDev::eraseAll(const bool /* secure */) /* const */ noexcept
 	int res = 0;
 	DWORD bytesReturned = 0;
 	CREATE_DISK diskStruct = {};
-	diskStruct.PartitionStyle = PARTITION_STYLE_RAW;
+	diskStruct.PartitionStyle = PARTITION_STYLE_MBR;
 
 	if(!DeviceIoControl(m_handle, IOCTL_DISK_CREATE_DISK, &diskStruct, sizeof(CREATE_DISK), NULL, 0, &bytesReturned, NULL))
 	{
