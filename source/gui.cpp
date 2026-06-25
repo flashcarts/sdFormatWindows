@@ -56,6 +56,23 @@ static void CloseConsoleWindow(void)
     }
 }
 
+static void InitDriveListComboBox(HWND hwnd) {
+    // Initialize drive list
+    HWND comboBox = GetDlgItem(hwnd, IDC_DRIVELIST);
+    retrieveAllActiveDrives();
+    for(u32 i=0; i < allActiveDrives.size(); i++)
+    {
+        ComboBox_AddString(comboBox, (LONG_PTR)allActiveDrives.at(i).c_str());
+    }
+}
+
+static inline void ClearDriveListComboBox(HWND hwnd) {
+    HWND comboBox = GetDlgItem(hwnd, IDC_DRIVELIST);
+    ComboBox_ResetContent(comboBox);
+    allActiveDrives.clear();
+    driveLtrIdx = -1;
+}
+
 static void OnFormatButtonClick(HWND hwnd) {
     if(driveLtrIdx < 0)
     {
@@ -96,13 +113,7 @@ static INT_PTR CALLBACK DialogProc(HWND hwnd, UINT message, WPARAM wParam, LPARA
 {
     switch(message) {
         case WM_INITDIALOG: {
-            // Initialize drive list
-            HWND comboBox = GetDlgItem(hwnd, IDC_DRIVELIST);
-            retrieveAllActiveDrives();
-            for(u32 i=0; i < allActiveDrives.size(); i++)
-            {
-                ComboBox_AddString(comboBox, (LONG_PTR)allActiveDrives.at(i).c_str());
-            }
+            InitDriveListComboBox(hwnd);
 
             // Initialize GUI icons
             SendMessage(hwnd, WM_SETICON, ICON_SMALL, (LPARAM)LoadIcon(GetModuleHandle(NULL), MAKEINTRESOURCE(IDI_ICON)));
@@ -111,6 +122,13 @@ static INT_PTR CALLBACK DialogProc(HWND hwnd, UINT message, WPARAM wParam, LPARA
             return TRUE;
         }
         case WM_COMMAND: {
+            if (HIWORD(wParam) == BN_CLICKED && LOWORD(wParam) == IDC_BUTTON_REFERSH_DRIVES) {
+                ClearDriveListComboBox(hwnd);
+                InitDriveListComboBox(hwnd);
+                EnableWindow(GetDlgItem(hwnd, IDC_BUTTON_START), FALSE);
+                break;
+            }
+
             if (HIWORD(wParam) == BN_CLICKED && LOWORD(wParam) == IDC_BUTTON_START) {
                 OnFormatButtonClick(hwnd);
                 break;
