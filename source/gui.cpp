@@ -138,6 +138,9 @@ static INT_PTR CALLBACK DialogProc(HWND hwnd, UINT message, WPARAM wParam, LPARA
                 HWND comboBox = (HWND)lParam;
                 int idx = SendMessage(comboBox, CB_GETCURSEL, 0, 0);
                 driveLtrIdx = idx == CB_ERR ? driveLtrIdx : idx;
+                // enable Format button once a valid drive is selected
+                if (driveLtrIdx >= 0)
+                    EnableWindow(GetDlgItem(hwnd, IDC_BUTTON_START), TRUE);
                 break;
             }
             break;
