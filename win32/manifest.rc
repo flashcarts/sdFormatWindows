@@ -13,12 +13,12 @@ FONT 9, "Segoe UI", 400, 0, 1
 {
     CONTROL
         "<a href=""https://www.flashcarts.net/sdformatwindows.html"">https://www.flashcarts.net/sdformatwindows.html</a>",
-        IDC_STATIC_LINK,
+        IDC_STATIC,
         "SysLink",
         WS_CHILD | WS_VISIBLE | WS_TABSTOP,
         10, 5, 190, 12
 
-    LTEXT "Select drive", IDC_STATIC_DRIVESELECT, 10, 22, 39, 12
+    LTEXT "Select drive", IDC_STATIC, 10, 22, 39, 12
     COMBOBOX IDC_DRIVELIST, 50, 20, 23, 12, CBS_DROPDOWNLIST | WS_VSCROLL
     CHECKBOX "Format as FAT32 (SDXC cards only)", IDC_CHECKBOX_FORCEFAT32, 10, 35, 120, 12, BS_AUTOCHECKBOX
     CHECKBOX "Force 32KiB cluster size (only for DS/DSi with SDXC cards)", IDC_CHECKBOX_FORCE32KIB, 10, 50, 190, 12, BS_AUTOCHECKBOX
