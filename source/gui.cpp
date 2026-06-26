@@ -108,6 +108,9 @@ static INT_PTR CALLBACK DialogProc(HWND hwnd, UINT message, WPARAM wParam, LPARA
             SendMessage(hwnd, WM_SETICON, ICON_SMALL, (LPARAM)LoadIcon(GetModuleHandle(NULL), MAKEINTRESOURCE(IDI_ICON)));
             SendMessage(hwnd, WM_SETICON, ICON_BIG, (LPARAM)LoadIcon(GetModuleHandle(NULL), MAKEINTRESOURCE(IDI_ICON)));
 
+            // 32KiB option requires FAT32, so start disabled
+            EnableWindow(GetDlgItem(hwnd, IDC_CHECKBOX_FORCE32KIB), FALSE);
+
             return TRUE;
         }
         case WM_COMMAND: {
@@ -118,18 +121,17 @@ static INT_PTR CALLBACK DialogProc(HWND hwnd, UINT message, WPARAM wParam, LPARA
 
             if (HIWORD(wParam) == BN_CLICKED && LOWORD(wParam) == IDC_CHECKBOX_FORCEFAT32) {
                 forceFat32 = SendMessage((HWND)lParam, BM_GETCHECK, 0, 0) == BST_CHECKED;
+                HWND cb32KiB = GetDlgItem(hwnd, IDC_CHECKBOX_FORCE32KIB);
+                EnableWindow(cb32KiB, forceFat32 ? TRUE : FALSE);
+                if (!forceFat32) {
+                    Button_SetCheck(cb32KiB, BST_UNCHECKED);
+                    force32KiB = false;
+                }
                 break;
             }
 
             if (HIWORD(wParam) == BN_CLICKED && LOWORD(wParam) == IDC_CHECKBOX_FORCE32KIB) {
-                bool isChecked = SendMessage((HWND)lParam, BM_GETCHECK, 0, 0) == BST_CHECKED;
-                if(isChecked && !forceFat32) {
-                    MessageBox(window, "Force 32KiB is only available when also forcing FAT32.", "Error", MB_OK);
-                    Button_SetCheck((HWND)lParam, BST_UNCHECKED);
-                    break;
-                }
-                else
-                    force32KiB = isChecked;
+                force32KiB = SendMessage((HWND)lParam, BM_GETCHECK, 0, 0) == BST_CHECKED;
                 break;
             }
 
