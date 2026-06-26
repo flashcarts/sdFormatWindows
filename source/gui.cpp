@@ -12,7 +12,7 @@ static HWND window = nullptr;
 static HWND console = nullptr;
 
 static std::vector<std::string> allActiveDrives;
-static int driveLtrIdx = 0;
+static int driveLtrIdx = -1;
 static bool forceFat32 = false;
 static bool force32KiB = false;
 
@@ -57,6 +57,12 @@ static void CloseConsoleWindow(void)
 }
 
 static void OnFormatButtonClick(HWND hwnd) {
+    if(driveLtrIdx < 0)
+    {
+        MessageBox(hwnd, "You must select a drive first!", "Error", MB_OK | MB_ICONERROR);
+        return;
+    }
+
     switch(MessageBox(hwnd, "This will ERASE ALL DATA on this drive! Press Yes to continue", "Warning", MB_YESNO | MB_ICONWARNING)) {
         case IDCANCEL:
         case IDNO:
