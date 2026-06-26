@@ -92,6 +92,7 @@ static void OnFormatButtonClick(HWND hwnd) {
     flags.force32KiB = force32KiB ? 1 : 0;
 
 	char label[4 * 11 + 1] = {}; // Worst case 4 bytes per char.
+    GetDlgItemText(hwnd, IDC_EDIT_DRIVELABEL, label, 12);
 
     OpenConsoleWindow();
 
@@ -114,6 +115,9 @@ static INT_PTR CALLBACK DialogProc(HWND hwnd, UINT message, WPARAM wParam, LPARA
     switch(message) {
         case WM_INITDIALOG: {
             InitDriveListComboBox(hwnd);
+
+            // Set label limit to 11 characters
+            Edit_LimitText(GetDlgItem(hwnd, IDC_EDIT_DRIVELABEL), 11);
 
             // Initialize GUI icons
             SendMessage(hwnd, WM_SETICON, ICON_SMALL, (LPARAM)LoadIcon(GetModuleHandle(NULL), MAKEINTRESOURCE(IDI_ICON)));
