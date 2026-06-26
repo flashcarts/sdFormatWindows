@@ -56,11 +56,11 @@ static void CloseConsoleWindow(void)
     }
 }
 
-static void OnFormatButtonClick(void) {
-    switch(MessageBox(window, "This will ERASE ALL DATA on this drive! Press Yes to continue", "Warning", MB_YESNO | MB_ICONWARNING)) {
+static void OnFormatButtonClick(HWND hwnd) {
+    switch(MessageBox(hwnd, "This will ERASE ALL DATA on this drive! Press Yes to continue", "Warning", MB_YESNO | MB_ICONWARNING)) {
         case IDCANCEL:
         case IDNO:
-            MessageBox(window, "Format has been cancelled.", "Info", MB_OK | MB_ICONINFORMATION);
+            MessageBox(hwnd, "Format has been cancelled.", "Info", MB_OK | MB_ICONINFORMATION);
             return;
     }
 
@@ -78,10 +78,10 @@ static void OnFormatButtonClick(void) {
         std::string errormsg = "Format failed. Error " + std::to_string(rc);
         printf(errormsg.c_str());
         printf("\n");
-        MessageBox(window, errormsg.c_str(), "Error", MB_OK | MB_ICONERROR);
+        MessageBox(hwnd, errormsg.c_str(), "Error", MB_OK | MB_ICONERROR);
     }
     else
-        MessageBox(window, "Format successful.", "Success", MB_OK | MB_ICONINFORMATION);
+        MessageBox(hwnd, "Format successful.", "Success", MB_OK | MB_ICONINFORMATION);
 
     CloseConsoleWindow();
 }
@@ -106,7 +106,7 @@ static INT_PTR CALLBACK DialogProc(HWND hwnd, UINT message, WPARAM wParam, LPARA
         }
         case WM_COMMAND: {
             if (HIWORD(wParam) == BN_CLICKED && LOWORD(wParam) == IDC_BUTTON_START) {
-                OnFormatButtonClick();
+                OnFormatButtonClick(hwnd);
                 break;
             }
 
