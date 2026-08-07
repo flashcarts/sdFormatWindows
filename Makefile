@@ -25,6 +25,7 @@ ARFLAGS  := -rcs
 # FCNET CHANGE START - HACK to support mingw-w64
 #LDFLAGS  := $(ARCH) -O2 -s -pie -fPIE -Wl,--gc-sections,-z,relro,-z,now,-z,noexecstack
 LDFLAGS  := $(ARCH) -O2 -Wl,--gc-sections -static
+LIBS     := -lcomctl32
 # FCNET CHANGE END - HACK to support mingw-w64
 
 PREFIX   :=

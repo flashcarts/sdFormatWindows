@@ -1,5 +1,6 @@
 #include <windows.h>
 #include <windowsx.h>
+#include <commctrl.h>
 
 #include <string>
 #include <vector>
@@ -167,6 +168,18 @@ static INT_PTR CALLBACK DialogProc(HWND hwnd, UINT message, WPARAM wParam, LPARA
             }
             break;
         }
+        case WM_NOTIFY: {
+            switch (((LPNMHDR)lParam)->code) {
+                case NM_CLICK:
+                case NM_RETURN: {
+                    PNMLINK pNMLink = (PNMLINK)lParam;
+                    LITEM item = pNMLink->item;
+                    ShellExecuteW(NULL, L"open", item.szUrl, NULL, NULL, SW_SHOW);
+                    break;
+                }
+            }
+            break;
+        }
         case WM_CLOSE: {
             EndDialog(hwnd, LOWORD(wParam));
             break;
@@ -177,6 +190,11 @@ static INT_PTR CALLBACK DialogProc(HWND hwnd, UINT message, WPARAM wParam, LPARA
 
 int guiMain(void) {
     FreeConsole();
+    INITCOMMONCONTROLSEX controls{
+        sizeof(INITCOMMONCONTROLSEX),
+        ICC_LINK_CLASS,
+    };
+    InitCommonControlsEx(&controls);
 
     DialogBox(
         GetModuleHandle(NULL),    // Application instance
