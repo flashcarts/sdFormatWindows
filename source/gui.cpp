@@ -9,6 +9,8 @@
 #include "resource.h"
 #include "types.h"
 
+#define IDT_MEDIA_TIMER 1
+
 static HWND window = nullptr;
 static HWND console = nullptr;
 
@@ -18,9 +20,9 @@ static bool forceFat32 = false;
 static bool force32KiB = false;
 
 static bool isDriveUsable(std::string driveLabel) {
-	std::string fullPath =  "\\\\.\\" + driveLabel + "\\";
-	UINT driveType = GetDriveTypeA(fullPath.c_str());
-	DWORD driveAttributes = GetFileAttributesA(fullPath.c_str());
+    std::string fullPath =  "\\\\.\\" + driveLabel + "\\";
+    UINT driveType = GetDriveTypeA(fullPath.c_str());
+    DWORD driveAttributes = GetFileAttributesA(fullPath.c_str());
     return driveType == DRIVE_REMOVABLE && driveAttributes != INVALID_FILE_ATTRIBUTES;
 }
 
@@ -75,6 +77,12 @@ static inline void ClearDriveListComboBox(HWND hwnd) {
     driveLtrIdx = -1;
 }
 
+static void RefreshDriveListComboBox(HWND hwnd) {
+    ClearDriveListComboBox(hwnd);
+    InitDriveListComboBox(hwnd);
+    EnableWindow(GetDlgItem(hwnd, IDC_BUTTON_START), FALSE);
+}
+
 static void OnFormatButtonClick(HWND hwnd) {
     if(driveLtrIdx < 0)
     {
@@ -93,7 +101,7 @@ static void OnFormatButtonClick(HWND hwnd) {
     flags.forceFat32 = forceFat32 ? 1 : 0;
     flags.force32KiB = force32KiB ? 1 : 0;
 
-	char label[4 * 11 + 1] = {}; // Worst case 4 bytes per char.
+    char label[4 * 11 + 1] = {}; // Worst case 4 bytes per char.
     GetDlgItemText(hwnd, IDC_EDIT_DRIVELABEL, label, 12);
 
     OpenConsoleWindow();
@@ -125,13 +133,36 @@ static INT_PTR CALLBACK DialogProc(HWND hwnd, UINT message, WPARAM wParam, LPARA
             SendMessage(hwnd, WM_SETICON, ICON_SMALL, (LPARAM)LoadIcon(GetModuleHandle(NULL), MAKEINTRESOURCE(IDI_ICON)));
             SendMessage(hwnd, WM_SETICON, ICON_BIG, (LPARAM)LoadIcon(GetModuleHandle(NULL), MAKEINTRESOURCE(IDI_ICON)));
 
+            // Set storage polling timer (triggers every second)
+            SetTimer(hwnd, IDT_MEDIA_TIMER, 1000, (TIMERPROC) NULL);
+
             return TRUE;
+        }
+        case WM_DEVICECHANGE: {
+            RefreshDriveListComboBox(hwnd);
+            break;
+        }
+        case WM_TIMER: {
+            switch(wParam) {
+                    case IDT_MEDIA_TIMER: {
+                        if(allActiveDrives.size() == 0) {
+                            RefreshDriveListComboBox(hwnd);
+                        } else {
+                            std::vector<std::string> currentDriveList = allActiveDrives;
+                            allActiveDrives.clear();
+                            retrieveAllActiveDrives();
+                            if(currentDriveList != allActiveDrives){
+                                RefreshDriveListComboBox(hwnd);
+                            }
+                        }
+                        break;
+                    }
+                }
+                break;
         }
         case WM_COMMAND: {
             if (HIWORD(wParam) == BN_CLICKED && LOWORD(wParam) == IDC_BUTTON_REFERSH_DRIVES) {
-                ClearDriveListComboBox(hwnd);
-                InitDriveListComboBox(hwnd);
-                EnableWindow(GetDlgItem(hwnd, IDC_BUTTON_START), FALSE);
+                RefreshDriveListComboBox(hwnd);
                 break;
             }
 
@@ -183,6 +214,10 @@ static INT_PTR CALLBACK DialogProc(HWND hwnd, UINT message, WPARAM wParam, LPARA
         }
         case WM_CLOSE: {
             EndDialog(hwnd, LOWORD(wParam));
+            break;
+        }
+        case WM_DESTROY: {
+            KillTimer(hwnd, IDT_MEDIA_TIMER);
             break;
         }
     }
