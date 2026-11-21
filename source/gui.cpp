@@ -17,10 +17,11 @@ static int driveLtrIdx = -1;
 static bool forceFat32 = false;
 static bool force32KiB = false;
 
-static bool isDriveRemovable(std::string driveLabel) {
+static bool isDriveUsable(std::string driveLabel) {
 	std::string fullPath =  "\\\\.\\" + driveLabel + "\\";
 	UINT driveType = GetDriveTypeA(fullPath.c_str());
-    return driveType == DRIVE_REMOVABLE;
+	DWORD driveAttributes = GetFileAttributesA(fullPath.c_str());
+    return driveType == DRIVE_REMOVABLE && driveAttributes != INVALID_FILE_ATTRIBUTES;
 }
 
 static void retrieveAllActiveDrives(void) {
@@ -34,7 +35,7 @@ static void retrieveAllActiveDrives(void) {
             std::string driveLabel;
             driveLabel.push_back('A' + i);
             driveLabel.push_back(':');
-            if(isDriveRemovable(driveLabel))
+            if(isDriveUsable(driveLabel))
                 allActiveDrives.push_back(driveLabel);
         }
     }
