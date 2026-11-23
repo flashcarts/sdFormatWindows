@@ -21,7 +21,7 @@ static bool force32KiB = false;
 
 static bool isDriveUsable(const std::string& driveLabel) {
     std::string fullPath =  "\\\\.\\" + driveLabel;
-    HANDLE handle = CreateFileA(fullPath.c_str(), GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_EXISTING, 0, NULL);
+    HANDLE handle = CreateFileA(fullPath.c_str(), 0, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_EXISTING, 0, NULL);
     if(handle == INVALID_HANDLE_VALUE) return false;
 
     STORAGE_PROPERTY_QUERY query{};
@@ -33,7 +33,7 @@ static bool isDriveUsable(const std::string& driveLabel) {
 
     if(!DeviceIoControl(handle, IOCTL_STORAGE_QUERY_PROPERTY, &query, sizeof(query), &dev, sizeof(dev), &bytes, NULL)) return false;
 
-    bool hasStorage = DeviceIoControl(handle, IOCTL_STORAGE_CHECK_VERIFY, NULL, 0, NULL, 0, &bytes, NULL);
+    bool hasStorage = DeviceIoControl(handle, IOCTL_STORAGE_CHECK_VERIFY2, NULL, 0, NULL, 0, &bytes, NULL);
 
     CloseHandle(handle);
     return dev.RemovableMedia && hasStorage;
