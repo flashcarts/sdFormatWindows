@@ -77,9 +77,15 @@ static void InitDriveListComboBox(HWND hwnd) {
     // Initialize drive list
     HWND comboBox = GetDlgItem(hwnd, IDC_DRIVELIST);
     retrieveAllActiveDrives();
-    for(u32 i=0; i < allActiveDrives.size(); i++)
-    {
-        ComboBox_AddString(comboBox, (LONG_PTR)allActiveDrives.at(i).c_str());
+    // disable drive list if there are no drives, otherwise enable it
+    if (allActiveDrives.size() == 0) {
+        EnableWindow(comboBox, FALSE);
+    } else {
+        EnableWindow(comboBox, TRUE);
+        for(u32 i=0; i < allActiveDrives.size(); i++)
+        {
+            ComboBox_AddString(comboBox, (LONG_PTR)allActiveDrives.at(i).c_str());
+        }
     }
 }
 
