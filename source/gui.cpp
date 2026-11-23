@@ -73,6 +73,17 @@ static void CloseConsoleWindow(void)
     }
 }
 
+static void OnDriveListSelChange(HWND hwnd, HWND comboBox) {
+    int idx = SendMessage(comboBox, CB_GETCURSEL, 0, 0);
+    driveLtrIdx = idx == CB_ERR ? driveLtrIdx : idx;
+    // enable Format button once a valid drive is selected
+    if (driveLtrIdx >= 0) {
+        EnableWindow(GetDlgItem(hwnd, IDC_BUTTON_START), TRUE);
+    } else {
+        EnableWindow(GetDlgItem(hwnd, IDC_BUTTON_START), FALSE);
+    }
+}
+
 static void InitDriveListComboBox(HWND hwnd) {
     // Initialize drive list
     HWND comboBox = GetDlgItem(hwnd, IDC_DRIVELIST);
@@ -86,7 +97,9 @@ static void InitDriveListComboBox(HWND hwnd) {
         {
             ComboBox_AddString(comboBox, (LONG_PTR)allActiveDrives.at(i).c_str());
         }
+        SendMessage(comboBox, CB_SETCURSEL, 0, 0);
     }
+    OnDriveListSelChange(hwnd, comboBox);
 }
 
 static inline void ClearDriveListComboBox(HWND hwnd) {
@@ -99,7 +112,6 @@ static inline void ClearDriveListComboBox(HWND hwnd) {
 static void RefreshDriveListComboBox(HWND hwnd) {
     ClearDriveListComboBox(hwnd);
     InitDriveListComboBox(hwnd);
-    EnableWindow(GetDlgItem(hwnd, IDC_BUTTON_START), FALSE);
 }
 
 static void OnFormatButtonClick(HWND hwnd) {
@@ -209,12 +221,7 @@ static INT_PTR CALLBACK DialogProc(HWND hwnd, UINT message, WPARAM wParam, LPARA
             }
 
             if (HIWORD(wParam) == CBN_SELCHANGE && LOWORD(wParam) == IDC_DRIVELIST) {
-                HWND comboBox = (HWND)lParam;
-                int idx = SendMessage(comboBox, CB_GETCURSEL, 0, 0);
-                driveLtrIdx = idx == CB_ERR ? driveLtrIdx : idx;
-                // enable Format button once a valid drive is selected
-                if (driveLtrIdx >= 0)
-                    EnableWindow(GetDlgItem(hwnd, IDC_BUTTON_START), TRUE);
+                OnDriveListSelChange(hwnd, (HWND)lParam);
                 break;
             }
             break;
