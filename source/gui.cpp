@@ -2,6 +2,7 @@
 #include <windowsx.h>
 #include <commctrl.h>
 
+#include <format>
 #include <string>
 #include <vector>
 
@@ -38,6 +39,44 @@ static bool isDriveUsable(const std::string& driveLabel) {
 
     CloseHandle(handle);
     return dev.RemovableMedia && hasStorage;
+}
+
+static void DisplayDriveSize(HWND hwnd) {
+    std::string labelText = "";
+    std::string fullPath = "\\\\.\\" + currentDrive;
+    HANDLE handle = CreateFileA(fullPath.c_str(), 0, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_EXISTING, 0, NULL);
+    if(handle == INVALID_HANDLE_VALUE) {
+        SetDlgItemTextA(hwnd, IDC_DRIVE_SIZE, "Can't get SD size");
+        return;
+    }
+
+    DISK_GEOMETRY_EX diskGeometryEx;
+    double diskSize;
+    if(!DeviceIoControl(handle, IOCTL_DISK_GET_DRIVE_GEOMETRY_EX, nullptr, 0, &diskGeometryEx, sizeof(diskGeometryEx), nullptr, nullptr)) {
+        SetDlgItemTextA(hwnd, IDC_DRIVE_SIZE, "Can't get SD size");
+        return;
+    }
+    CloseHandle(handle);
+
+    diskSize = ((u64)diskGeometryEx.DiskSize.QuadPart) / 1048576; // Get size in mebibytes
+
+    // enable force fat32 button for sdxc cards, disable otherwise
+    if (diskSize > 32768) {
+        EnableWindow(GetDlgItem(hwnd, IDC_CHECKBOX_FORCEFAT32), TRUE);
+    } else {
+        EnableWindow(GetDlgItem(hwnd, IDC_CHECKBOX_FORCEFAT32), FALSE);
+    }
+
+    // May need to handle SDUC in future if GPT table support is to be added
+    if (diskSize < 1024) {
+        labelText = std::format("{:.2f} MiB SD", diskSize);
+    } else if (diskSize < 1048576) {
+        labelText = std::format("{:.2f} GiB {}", diskSize/1024, diskSize > 32768 ? "SDXC" : "SDHC");
+    } else {
+        labelText = std::format("{:.2f} TiB SDXC", diskSize/1048576);
+    }
+
+    SetDlgItemTextA(hwnd, IDC_DRIVE_SIZE, labelText.c_str());
 }
 
 static void retrieveAllActiveDrives(void) {
@@ -81,8 +120,11 @@ static void OnDriveListSelChange(HWND hwnd, HWND comboBox) {
     if (driveLtrIdx >= 0) {
         EnableWindow(GetDlgItem(hwnd, IDC_BUTTON_START), TRUE);
         currentDrive = allActiveDrives.at(driveLtrIdx);
+        DisplayDriveSize(hwnd);
     } else {
         EnableWindow(GetDlgItem(hwnd, IDC_BUTTON_START), FALSE);
+        EnableWindow(GetDlgItem(hwnd, IDC_CHECKBOX_FORCEFAT32), FALSE);
+        SetDlgItemTextA(hwnd, IDC_DRIVE_SIZE, "No drive selected");
     }
 }
 
