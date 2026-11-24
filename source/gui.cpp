@@ -15,6 +15,7 @@ static HWND window = nullptr;
 static HWND console = nullptr;
 
 static std::vector<std::string> allActiveDrives;
+static std::string currentDrive = "";
 static int driveLtrIdx = -1;
 static bool forceFat32 = false;
 static bool force32KiB = false;
@@ -79,6 +80,7 @@ static void OnDriveListSelChange(HWND hwnd, HWND comboBox) {
     // enable Format button once a valid drive is selected
     if (driveLtrIdx >= 0) {
         EnableWindow(GetDlgItem(hwnd, IDC_BUTTON_START), TRUE);
+        currentDrive = allActiveDrives.at(driveLtrIdx);
     } else {
         EnableWindow(GetDlgItem(hwnd, IDC_BUTTON_START), FALSE);
     }
@@ -97,7 +99,8 @@ static void InitDriveListComboBox(HWND hwnd) {
         {
             ComboBox_AddString(comboBox, (LONG_PTR)allActiveDrives.at(i).c_str());
         }
-        SendMessage(comboBox, CB_SETCURSEL, 0, 0);
+        if(currentDrive == "" || ComboBox_SelectString(comboBox, -1, (LONG_PTR)currentDrive.c_str()) == CB_ERR)
+            SendMessage(comboBox, CB_SETCURSEL, 0, 0);
     }
     OnDriveListSelChange(hwnd, comboBox);
 }
@@ -193,6 +196,7 @@ static INT_PTR CALLBACK DialogProc(HWND hwnd, UINT message, WPARAM wParam, LPARA
         }
         case WM_COMMAND: {
             if (HIWORD(wParam) == BN_CLICKED && LOWORD(wParam) == IDC_BUTTON_REFERSH_DRIVES) {
+                currentDrive = "";
                 RefreshDriveListComboBox(hwnd);
                 break;
             }
