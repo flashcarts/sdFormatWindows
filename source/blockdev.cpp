@@ -26,23 +26,44 @@ int BlockDev::open(const char *const path, const bool /* rw */) noexcept
 	std::string fullPath = path;
 	fullPath =  "\\\\.\\" + fullPath;
 
-	// Get the physical drive number that this drive letter resides in
-	HANDLE handle = CreateFile(fullPath.c_str(), GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE, nullptr, OPEN_EXISTING, FILE_FLAG_NO_BUFFERING, nullptr);
-	STORAGE_DEVICE_NUMBER number;
-	DWORD bytesReturned = 0;
-	DeviceIoControl(handle, IOCTL_STORAGE_GET_DEVICE_NUMBER, nullptr, 0, &number, sizeof(number), &bytesReturned, nullptr);
-	DWORD physicalDriveNumber = number.DeviceNumber;
-	// ...and construct full path to it
-	pDrvPath = "\\\\.\\PhysicalDrive" + std::to_string(physicalDriveNumber);
-
-	// Close the handle for volume. We will reopen with the physical drive.
-	// Wait for it to complete.
-	while(CloseHandle(handle) == 0);
+	HANDLE handle = INVALID_HANDLE_VALUE;
 
 	do
 	{
+		// Get the physical drive number that this drive letter resides in
+		HANDLE handle = CreateFile(fullPath.c_str(), GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE, nullptr, OPEN_EXISTING, FILE_FLAG_NO_BUFFERING, nullptr);
+		if (handle == INVALID_HANDLE_VALUE)
+		{
+			printf("Failed to open drive handle\n");
+			res = GetLastError();
+			break;
+		}
+
+		STORAGE_DEVICE_NUMBER number;
+		DWORD bytesReturned = 0;
+		if (!DeviceIoControl(handle, IOCTL_STORAGE_GET_DEVICE_NUMBER, nullptr, 0, &number, sizeof(number), &bytesReturned, nullptr))
+		{
+			printf("Failed to get physical drive number\n");
+			res = GetLastError();
+			break;
+		}
+
+		DWORD physicalDriveNumber = number.DeviceNumber;
+		// ...and construct full path to it
+		pDrvPath = "\\\\.\\PhysicalDrive" + std::to_string(physicalDriveNumber);
+
+		// Close the handle for volume. We will reopen with the physical drive.
+		// Wait for it to complete.
+		while(CloseHandle(handle) == 0);
+
 		// Switch handle to the physical drive where we will perform operations
 		handle = CreateFile(pDrvPath.c_str(), GENERIC_READ | GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE, nullptr, OPEN_EXISTING, FILE_FLAG_NO_BUFFERING, nullptr);
+		if (handle == INVALID_HANDLE_VALUE)
+		{
+			printf("Failed to open physical drive handle\n");
+			res = GetLastError();
+			break;
+		}
 
 		// Get disk size
 		DISK_GEOMETRY_EX diskGeometryEx;
@@ -177,6 +198,11 @@ int BlockDev::eraseAll(const bool /* secure */) /* const */ noexcept
 
 	// reopen the handle. Now Windows should let us do anything
 	m_handle = CreateFile(pDrvPath.c_str(), GENERIC_READ | GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE, nullptr, OPEN_EXISTING, FILE_FLAG_NO_BUFFERING, nullptr);
+	if (m_handle == INVALID_HANDLE_VALUE)
+	{
+		res = GetLastError();
+		printf("Failed to reopen drive handle\n");
+	}
 
 	return res;
 }
