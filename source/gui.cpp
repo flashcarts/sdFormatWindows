@@ -33,7 +33,10 @@ static bool isDriveUsable(const std::string& driveLabel) {
     STORAGE_DEVICE_DESCRIPTOR dev{};
     DWORD bytes;
 
-    if(!DeviceIoControl(handle, IOCTL_STORAGE_QUERY_PROPERTY, &query, sizeof(query), &dev, sizeof(dev), &bytes, NULL)) return false;
+    if(!DeviceIoControl(handle, IOCTL_STORAGE_QUERY_PROPERTY, &query, sizeof(query), &dev, sizeof(dev), &bytes, NULL)) {
+        CloseHandle(handle);
+        return false;
+    }
 
     bool hasStorage = DeviceIoControl(handle, IOCTL_STORAGE_CHECK_VERIFY2, NULL, 0, NULL, 0, &bytes, NULL);
 
@@ -54,6 +57,7 @@ static void DisplayDriveSize(HWND hwnd) {
     double diskSize;
     if(!DeviceIoControl(handle, IOCTL_DISK_GET_DRIVE_GEOMETRY_EX, nullptr, 0, &diskGeometryEx, sizeof(diskGeometryEx), nullptr, nullptr)) {
         SetDlgItemTextA(hwnd, IDC_DRIVE_SIZE, "Can't get SD size");
+        CloseHandle(handle);
         return;
     }
     CloseHandle(handle);
@@ -210,7 +214,7 @@ static INT_PTR CALLBACK DialogProc(HWND hwnd, UINT message, WPARAM wParam, LPARA
             SendMessage(hwnd, WM_SETICON, ICON_BIG, (LPARAM)LoadIcon(GetModuleHandle(NULL), MAKEINTRESOURCE(IDI_ICON)));
 
             // Set storage polling timer (triggers every second)
-            SetTimer(hwnd, IDT_MEDIA_TIMER, 1000, (TIMERPROC) NULL);
+            SetTimer(hwnd, IDT_MEDIA_TIMER, 1000, NULL);
 
             return TRUE;
         }
