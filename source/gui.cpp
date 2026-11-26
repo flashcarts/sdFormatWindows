@@ -2,6 +2,7 @@
 #include <windowsx.h>
 #include <commctrl.h>
 
+#include <format>
 #include <string>
 #include <vector>
 
@@ -15,6 +16,7 @@ static HWND window = nullptr;
 static HWND console = nullptr;
 
 static std::vector<std::string> allActiveDrives;
+static std::string currentDrive = "";
 static int driveLtrIdx = -1;
 static bool forceFat32 = false;
 static bool force32KiB = false;
@@ -31,12 +33,54 @@ static bool isDriveUsable(const std::string& driveLabel) {
     STORAGE_DEVICE_DESCRIPTOR dev{};
     DWORD bytes;
 
-    if(!DeviceIoControl(handle, IOCTL_STORAGE_QUERY_PROPERTY, &query, sizeof(query), &dev, sizeof(dev), &bytes, NULL)) return false;
+    if(!DeviceIoControl(handle, IOCTL_STORAGE_QUERY_PROPERTY, &query, sizeof(query), &dev, sizeof(dev), &bytes, NULL)) {
+        CloseHandle(handle);
+        return false;
+    }
 
     bool hasStorage = DeviceIoControl(handle, IOCTL_STORAGE_CHECK_VERIFY2, NULL, 0, NULL, 0, &bytes, NULL);
 
     CloseHandle(handle);
     return dev.RemovableMedia && hasStorage;
+}
+
+static void DisplayDriveSize(HWND hwnd) {
+    std::string labelText = "";
+    std::string fullPath = "\\\\.\\" + currentDrive;
+    HANDLE handle = CreateFileA(fullPath.c_str(), 0, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_EXISTING, 0, NULL);
+    if(handle == INVALID_HANDLE_VALUE) {
+        SetDlgItemTextA(hwnd, IDC_DRIVE_SIZE, "Can't get SD size");
+        return;
+    }
+
+    DISK_GEOMETRY_EX diskGeometryEx;
+    double diskSize;
+    if(!DeviceIoControl(handle, IOCTL_DISK_GET_DRIVE_GEOMETRY_EX, nullptr, 0, &diskGeometryEx, sizeof(diskGeometryEx), nullptr, nullptr)) {
+        SetDlgItemTextA(hwnd, IDC_DRIVE_SIZE, "Can't get SD size");
+        CloseHandle(handle);
+        return;
+    }
+    CloseHandle(handle);
+
+    diskSize = ((u64)diskGeometryEx.DiskSize.QuadPart) / 1048576; // Get size in mebibytes
+
+    // enable force fat32 button for sdxc cards, disable otherwise
+    if (diskSize > 32768) {
+        EnableWindow(GetDlgItem(hwnd, IDC_CHECKBOX_FORCEFAT32), TRUE);
+    } else {
+        EnableWindow(GetDlgItem(hwnd, IDC_CHECKBOX_FORCEFAT32), FALSE);
+    }
+
+    // May need to handle SDUC in future if GPT table support is to be added
+    if (diskSize < 1024) {
+        labelText = std::format("{:.2f} MiB SD", diskSize);
+    } else if (diskSize < 1048576) {
+        labelText = std::format("{:.2f} GiB {}", diskSize/1024, diskSize > 32768 ? "SDXC" : "SDHC");
+    } else {
+        labelText = std::format("{:.2f} TiB SDXC", diskSize/1048576);
+    }
+
+    SetDlgItemTextA(hwnd, IDC_DRIVE_SIZE, labelText.c_str());
 }
 
 static void retrieveAllActiveDrives(void) {
@@ -73,14 +117,38 @@ static void CloseConsoleWindow(void)
     }
 }
 
+static void OnDriveListSelChange(HWND hwnd, HWND comboBox) {
+    int idx = SendMessage(comboBox, CB_GETCURSEL, 0, 0);
+    driveLtrIdx = idx == CB_ERR ? driveLtrIdx : idx;
+    // enable Format button once a valid drive is selected
+    if (driveLtrIdx >= 0) {
+        EnableWindow(GetDlgItem(hwnd, IDC_BUTTON_START), TRUE);
+        currentDrive = allActiveDrives.at(driveLtrIdx);
+        DisplayDriveSize(hwnd);
+    } else {
+        EnableWindow(GetDlgItem(hwnd, IDC_BUTTON_START), FALSE);
+        EnableWindow(GetDlgItem(hwnd, IDC_CHECKBOX_FORCEFAT32), FALSE);
+        SetDlgItemTextA(hwnd, IDC_DRIVE_SIZE, "No drive selected");
+    }
+}
+
 static void InitDriveListComboBox(HWND hwnd) {
     // Initialize drive list
     HWND comboBox = GetDlgItem(hwnd, IDC_DRIVELIST);
     retrieveAllActiveDrives();
-    for(u32 i=0; i < allActiveDrives.size(); i++)
-    {
-        ComboBox_AddString(comboBox, (LONG_PTR)allActiveDrives.at(i).c_str());
+    // disable drive list if there are no drives, otherwise enable it
+    if (allActiveDrives.size() == 0) {
+        EnableWindow(comboBox, FALSE);
+    } else {
+        EnableWindow(comboBox, TRUE);
+        for(u32 i=0; i < allActiveDrives.size(); i++)
+        {
+            ComboBox_AddString(comboBox, (LONG_PTR)allActiveDrives.at(i).c_str());
+        }
+        if(currentDrive == "" || ComboBox_SelectString(comboBox, -1, (LONG_PTR)currentDrive.c_str()) == CB_ERR)
+            SendMessage(comboBox, CB_SETCURSEL, 0, 0);
     }
+    OnDriveListSelChange(hwnd, comboBox);
 }
 
 static inline void ClearDriveListComboBox(HWND hwnd) {
@@ -93,7 +161,6 @@ static inline void ClearDriveListComboBox(HWND hwnd) {
 static void RefreshDriveListComboBox(HWND hwnd) {
     ClearDriveListComboBox(hwnd);
     InitDriveListComboBox(hwnd);
-    EnableWindow(GetDlgItem(hwnd, IDC_BUTTON_START), FALSE);
 }
 
 static void OnFormatButtonClick(HWND hwnd) {
@@ -147,7 +214,7 @@ static INT_PTR CALLBACK DialogProc(HWND hwnd, UINT message, WPARAM wParam, LPARA
             SendMessage(hwnd, WM_SETICON, ICON_BIG, (LPARAM)LoadIcon(GetModuleHandle(NULL), MAKEINTRESOURCE(IDI_ICON)));
 
             // Set storage polling timer (triggers every second)
-            SetTimer(hwnd, IDT_MEDIA_TIMER, 1000, (TIMERPROC) NULL);
+            SetTimer(hwnd, IDT_MEDIA_TIMER, 1000, NULL);
 
             return TRUE;
         }
@@ -175,6 +242,7 @@ static INT_PTR CALLBACK DialogProc(HWND hwnd, UINT message, WPARAM wParam, LPARA
         }
         case WM_COMMAND: {
             if (HIWORD(wParam) == BN_CLICKED && LOWORD(wParam) == IDC_BUTTON_REFERSH_DRIVES) {
+                currentDrive = "";
                 RefreshDriveListComboBox(hwnd);
                 break;
             }
@@ -203,12 +271,7 @@ static INT_PTR CALLBACK DialogProc(HWND hwnd, UINT message, WPARAM wParam, LPARA
             }
 
             if (HIWORD(wParam) == CBN_SELCHANGE && LOWORD(wParam) == IDC_DRIVELIST) {
-                HWND comboBox = (HWND)lParam;
-                int idx = SendMessage(comboBox, CB_GETCURSEL, 0, 0);
-                driveLtrIdx = idx == CB_ERR ? driveLtrIdx : idx;
-                // enable Format button once a valid drive is selected
-                if (driveLtrIdx >= 0)
-                    EnableWindow(GetDlgItem(hwnd, IDC_BUTTON_START), TRUE);
+                OnDriveListSelChange(hwnd, (HWND)lParam);
                 break;
             }
             break;
